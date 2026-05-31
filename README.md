@@ -41,7 +41,7 @@ cp .env.example .env
 ## Quick Start
 
 ```python
-import pyarrow  # Windows DLL fix — must be first
+import pyarrow 
 import torch, sys, os
 sys.path.insert(0, '.')
 
