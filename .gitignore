@@ -1,0 +1,72 @@
+# Local tool config / paper draft / experiment outputs
+.claude/
+paper/
+outputs/
+
+# Virtual environment
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment
+.env
+!.env.example
+
+# Model cache and weights
+*.bin
+*.safetensors
+*.pt
+*.pkl
+models/
+model_cache/
+
+# Data (keep sample_prompts, ignore downloaded datasets)
+data/gsm8k/
+data/prontoqa/
+data/dyck/
+!data/sample_prompts.json
+!data/dataset_loader.py
+!data/__init__.py
+
+# HuggingFace cache (relative to repo root only — ~/.cache is outside scope)
+.cache/
+
+# pytest
+.pytest_cache/
+pytest_cache/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# LaTeX build artifacts (paper/)
+*.aux
+*.log
+*.bbl
+*.blg
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+paper/main.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+
+

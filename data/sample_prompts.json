@@ -1,0 +1,52 @@
+[
+  {
+    "id": "math_001",
+    "prompt": "Solve step by step: A store sells apples for $0.50 each and oranges for $0.75 each. If Sarah buys 4 apples and 3 oranges, how much does she spend in total?",
+    "expected_steps": [
+      "Cost of apples = 4 × $0.50 = $2.00",
+      "Cost of oranges = 3 × $0.75 = $2.25",
+      "Total = $2.00 + $2.25 = $4.25"
+    ],
+    "answer": "$4.25"
+  },
+  {
+    "id": "math_002",
+    "prompt": "Solve step by step: A train travels at 60 mph for 2.5 hours, then at 80 mph for 1.5 hours. What is the total distance traveled?",
+    "expected_steps": [
+      "Distance in first leg = 60 × 2.5 = 150 miles",
+      "Distance in second leg = 80 × 1.5 = 120 miles",
+      "Total distance = 150 + 120 = 270 miles"
+    ],
+    "answer": "270 miles"
+  },
+  {
+    "id": "math_003",
+    "prompt": "Solve step by step: A rectangle has a perimeter of 36 cm. If the length is twice the width, what are the dimensions?",
+    "expected_steps": [
+      "Let width = w, then length = 2w",
+      "Perimeter = 2(length + width) = 2(2w + w) = 6w = 36",
+      "Width = 6 cm, length = 12 cm"
+    ],
+    "answer": "Width = 6 cm, Length = 12 cm"
+  },
+  {
+    "id": "math_004",
+    "prompt": "Solve step by step: There are 24 students in a class. 3/8 of them play soccer, and 1/4 of those soccer players also play basketball. How many students play both sports?",
+    "expected_steps": [
+      "Soccer players = 3/8 × 24 = 9 students",
+      "Students who play both = 1/4 × 9 = 2.25, round to 2 students",
+      "Answer: 2 students play both soccer and basketball"
+    ],
+    "answer": "2 students"
+  },
+  {
+    "id": "math_005",
+    "prompt": "Solve step by step: A tank is 3/5 full. After adding 12 liters, it becomes 4/5 full. What is the total capacity of the tank?",
+    "expected_steps": [
+      "The increase in fill level = 4/5 - 3/5 = 1/5 of the tank",
+      "1/5 of the tank = 12 liters",
+      "Total capacity = 12 × 5 = 60 liters"
+    ],
+    "answer": "60 liters"
+  }
+]
