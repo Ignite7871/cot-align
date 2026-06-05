@@ -116,17 +116,3 @@ pytest tests/ -v
 | **TAS** (Trajectory Alignment Score) | Geometric smoothness of the activation trajectory through the residual stream layers. |
 | **k\*** | Normalised reasoning horizon — the step position beyond which faithfulness decays. |
 
-## Citation
-
-```bibtex
-@misc{cotalign2026,
-  title   = {CoT-Align: Detecting and Correcting Unfaithful Chain-of-Thought Reasoning},
-  author  = {[Author]},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/XXXX.XXXXX}
-}
-```
-
-## License
-
-[MIT](LICENSE)
