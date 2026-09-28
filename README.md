@@ -1,118 +1,237 @@
 # CoT-Align
 
-Detecting and correcting unfaithful Chain-of-Thought reasoning at inference time using mechanistic interpretability.
+**Detecting and correcting unfaithful Chain-of-Thought reasoning at inference time using mechanistic interpretability.**
 
-## Key Finding
+CoT-Align investigates whether a language model's Chain-of-Thought (CoT) reasoning is actually causally used to produce its final answer, rather than merely being correlated with the model's internal computation.
 
-**CoT faithfulness is domain-specific, not a global model property.**
+The project combines **causal intervention, activation analysis, probing, and inference-time steering** to detect and correct reasoning steps that appear to be decorative rather than causally influential.
 
-LLaMA-3.1-8B uses its reasoning chain causally on arithmetic (NLDD = +0.081) but generates decorative CoT on logical deduction (NLDD = −0.051) — despite encoding both reasoning chains in its residual stream (RSA ≥ 0.96 in both cases). This RSA/NLDD dissociation means the model *represents* its proof chain but does not causally use it when answering logical deduction questions. GPT-2 generates decorative CoT on arithmetic regardless of scale.
+---
 
-| Metric | GPT-2 (GSM8K) | LLaMA-3.1-8B (GSM8K) | LLaMA-3.1-8B (PrOntoQA) |
-|:---|:---:|:---:|:---:|
-| Mean NLDD | −0.126 | **+0.081** | −0.051 |
-| Faithful step fraction | 28.1% | 41.4% | 30.0% |
-| Mean RSA | 0.996 | 0.966 | 0.982 |
-| Mean TAS | 0.824 | 0.687 | 0.677 |
-| k\* (normalised) | 0.169 | 0.240 | 0.201 |
-| Steps evaluated | 442 | 897 | 1,200 |
+## 🔬 Key Finding
 
-**NLDD > 0** = corrupting a CoT step *reduces* model confidence → step is causally influential (faithful).  
-**NLDD < 0** = corrupting a step *increases* model confidence → step is decorative (unfaithful).
+**Chain-of-Thought faithfulness is domain-dependent rather than a single global property of a model.**
 
-## Installation
+Experiments on GPT-2 and LLaMA-3.1-8B show that the same model can use its reasoning chain causally on one task while producing largely decorative reasoning on another.
 
-**Requirements:** Python 3.12, CUDA 12.4
+For example:
 
-```bash
-# 1. Install PyTorch with CUDA 12.4 support
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+| Metric                 | GPT-2 (GSM8K) | LLaMA-3.1-8B (GSM8K) | LLaMA-3.1-8B (PrOntoQA) |
+| ---------------------- | ------------: | -------------------: | ----------------------: |
+| Mean NLDD              |        −0.126 |           **+0.081** |                  −0.051 |
+| Faithful step fraction |         28.1% |                41.4% |                   30.0% |
+| Mean RSA               |         0.996 |                0.966 |                   0.982 |
+| Mean TAS               |         0.824 |                0.687 |                   0.677 |
+| Normalised k*          |         0.169 |                0.240 |                   0.201 |
+| Steps evaluated        |           442 |                  897 |                   1,200 |
 
-# 2. Install remaining dependencies
-pip install -r requirements.txt
+### Interpretation
 
-# 3. Copy environment template and add your HuggingFace token
-cp .env.example .env
-# Edit .env — set HF_TOKEN (required only for LLaMA; GPT-2 runs without a token)
+* **NLDD > 0:** corrupting a CoT step reduces model confidence, indicating that the step is causally influential.
+* **NLDD < 0:** corrupting a CoT step increases confidence, indicating that the step behaves more like decorative reasoning.
+* High RSA alongside negative NLDD can indicate that a reasoning chain is represented internally without being causally used for the final answer.
+
+This dissociation between **representation and causal use** is the central observation investigated by CoT-Align.
+
+---
+
+## 🧠 What the Project Does
+
+The system follows a closed-loop detection and correction pipeline:
+
+```text
+                    ┌─────────────────────┐
+                    │   Question + CoT    │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │  Faithfulness Probe │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Causal Intervention │
+                    │       (NLDD)        │
+                    └──────────┬──────────┘
+                               ↓
+                 ┌─────────────┴─────────────┐
+                 ↓                           ↓
+        Representational               Causal Analysis
+        Analysis (RSA)                 + Classification
+                 │                           │
+                 └─────────────┬─────────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Activation Steering │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Corrected Inference │
+                    └─────────────────────┘
 ```
 
-> **Windows DLL fix:** On Windows, `import pyarrow` must be the **first import** in every entry-point script, before `transformers` or `transformer_lens`. This resolves a DLL load-order conflict caused by CUDA and Arrow competing for the same system DLLs. All source files in this repository already include this header. If you write new scripts, add `import pyarrow` as the very first line.
+---
 
-## Quick Start
+## 🧪 Experimental Setup
 
-```python
-import pyarrow 
-import torch, sys, os
-sys.path.insert(0, '.')
+### Models
 
-from src.utils.model_loader import get_model
-from data.dataset_loader import load_gsm8k
-from src.probing.faithfulness_detector import generate_faithfulness_labels
+* GPT-2
+* LLaMA-3.1-8B
 
-model = get_model('gpt2', device='cuda')
-samples = load_gsm8k(split='test', max_samples=5)
+### Tasks
 
-for sample in samples:
-    question, steps = sample['question'], sample['steps']
-    prompt = f"Q: {question} A: {' '.join(steps)}"
-    labels = generate_faithfulness_labels(model, prompt, steps, nldd_threshold=0.1)
-    for i, (_, _, nldd) in enumerate(labels):
-        status = 'faithful' if nldd > 0.1 else 'unfaithful'
-        print(f"  Step {i+1}: NLDD={nldd:+.3f}  [{status}]")
-```
+* GSM8K
+* PrOntoQA
+* Dyck-n datasets for supporting experiments
 
-## Project Structure
+### Techniques
 
-```
-CoT-Align/
-├── experiments/                 # Jupyter notebooks — run in order
-│   ├── 01_baseline_cot.ipynb    # GPT-2 NLDD / RSA / TAS (GSM8K + PrOntoQA)
-│   ├── 02_probing.ipynb         # GPT-2 faithfulness probe training
-│   ├── 03_steering.ipynb        # GPT-2 activation steering
-│   ├── 04_llama_baseline.ipynb  # LLaMA-3.1-8B baseline (GSM8K + PrOntoQA)
-│   ├── 05_llama_probing.ipynb   # LLaMA faithfulness probe (PCA-50)
-│   └── 06_llama_steering.ipynb  # LLaMA activation steering (M1 / M2)
+* Causal activation interventions
+* Linear probing
+* Activation steering
+* Representational Similarity Analysis
+* Next-token log-probability analysis
+
+---
+
+## 📐 Metrics
+
+| Metric   | Purpose                                                              |
+| -------- | -------------------------------------------------------------------- |
+| **NLDD** | Measures causal influence of a CoT step on the model's final answer  |
+| **RSA**  | Measures representational changes following step corruption          |
+| **TAS**  | Measures geometric alignment of the activation trajectory            |
+| **k***   | Estimates the effective reasoning horizon before faithfulness decays |
+
+---
+
+## 🏗️ Repository Structure
+
+```text
+cot-align/
+├── experiments/
+│   ├── 01_baseline_cot.ipynb
+│   ├── 02_probing.ipynb
+│   ├── 03_steering.ipynb
+│   ├── 04_llama_baseline.ipynb
+│   ├── 05_llama_probing.ipynb
+│   └── 06_llama_steering.ipynb
+│
 ├── src/
-│   ├── pipeline/                # Closed-loop detection + correction
-│   ├── probing/                 # NLDD labelling and linear probe
-│   ├── steering/                # Activation steering vector construction
-│   └── utils/                   # Model loader, metrics, visualiser
+│   ├── pipeline/       # Closed-loop detection and correction
+│   ├── probing/        # Faithfulness labelling and probes
+│   ├── steering/       # Activation steering
+│   └── utils/          # Model loading, metrics and visualisation
+│
 ├── data/
-│   └── dataset_loader.py        # GSM8K, PrOntoQA, Dyck-n loaders
-├── api/                         # FastAPI inference server
-├── tests/                       # pytest suite (31 tests)
-├── outputs/                     # Generated figures and probe artefacts (git-ignored)
-├── paper/                       # LaTeX source (git-ignored)
+│   └── dataset_loader.py
+│
+├── api/                # FastAPI inference server
+├── tests/              # Automated tests
+├── outputs/            # Generated experiment artefacts
 ├── requirements.txt
-├── .env.example
-└── LICENSE
+└── .env.example
 ```
 
-## Reproducing Results
+---
 
-Notebooks are self-contained and save all figures to `outputs/`.
+## 🚀 Quick Start
 
-**GPT-2 baseline** (2 GB VRAM, or CPU with `DEVICE=cpu`):
+### Requirements
+
+* Python 3.12
+* CUDA 12.4 recommended
+* NVIDIA GPU for the LLaMA experiments
+
+Install dependencies:
+
 ```bash
-jupyter notebook experiments/01_baseline_cot.ipynb
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+pip install -r requirements.txt
 ```
 
-**LLaMA-3.1-8B baseline** (≥6 GB VRAM; runs 4-bit quantised via BitsAndBytes):
+For LLaMA experiments:
+
 ```bash
-HF_TOKEN=hf_your_token jupyter notebook experiments/04_llama_baseline.ipynb
+cp .env.example .env
 ```
 
-**Test suite:**
+Add your Hugging Face token to `.env`.
+
+### Run the test suite
+
 ```bash
 pytest tests/ -v
 ```
 
-## Metrics
+### Run the GPT-2 experiment
 
-| Metric | What it measures |
-|:---|:---|
-| **NLDD** (Next-token Log-probability Divergence Delta) | Causal influence of each CoT step on the final answer. Positive = faithful, negative = decorative. |
-| **RSA** (Representational Similarity Analysis) | How much step corruption changes the residual stream at the answer position. Near 1 = no propagation. |
-| **TAS** (Trajectory Alignment Score) | Geometric smoothness of the activation trajectory through the residual stream layers. |
-| **k\*** | Normalised reasoning horizon — the step position beyond which faithfulness decays. |
+```bash
+jupyter notebook experiments/01_baseline_cot.ipynb
+```
 
+### Run the LLaMA experiment
+
+```bash
+jupyter notebook experiments/04_llama_baseline.ipynb
+```
+
+---
+
+## 🖥️ Reproducibility
+
+The repository is organized so that the experiments can be reproduced from the included notebooks and source modules.
+
+All generated figures and probe artefacts are written to the `outputs/` directory.
+
+The repository also includes a test suite covering the core pipeline components.
+
+---
+
+## 📊 Why This Matters
+
+Large language models can generate reasoning traces that appear convincing without those traces necessarily being causally responsible for the final answer.
+
+CoT-Align studies this problem at the level of **internal model computation**, rather than evaluating reasoning solely from the generated text.
+
+This makes the project relevant to research in:
+
+* Mechanistic Interpretability
+* LLM Reliability
+* AI Safety
+* Reasoning Evaluation
+* Causal Analysis of Neural Networks
+* Inference-Time Model Steering
+
+---
+
+## 📚 Research
+
+CoT-Align is part of my ongoing research into the reliability and internal behaviour of large language models.
+
+Related work includes research on:
+
+* dynamic precision routing
+* distributional fragility in LLMs
+* retrieval-augmented generation
+* privacy-preserving machine learning
+
+---
+
+## ⚠️ Research Status
+
+This repository is a research prototype intended for experimentation and reproducibility rather than production deployment.
+
+Results depend on model architecture, task distribution, intervention methodology, and experimental configuration.
+
+---
+
+## 👤 Author
+
+**Srikar Reddy Gunupati**
+
+B.Tech Computer Science & Engineering (AI & ML)
+
+Research interests: **LLM reliability, mechanistic interpretability, AI security, privacy-preserving ML, and intelligent systems.**
+
+[LinkedIn](https://linkedin.com/in/srikar-reddy-gunupati)
